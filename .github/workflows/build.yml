@@ -17,8 +17,8 @@ on:
         type: boolean
         default: false
         required: false
-  schedule:
-    - cron: '0 12 * * *'
+  # schedule:
+  #   - cron: '0 12 * * *'
 
 env:
   DOCKER_BUILDKIT: 1
@@ -48,7 +48,7 @@ jobs:
   build_base:
     name: Build base image
     if: ${{ github.event.inputs.buildOnly != 'true' }}
-    needs: pre_check
+    # needs: pre_check
     strategy:
       fail-fast: false
       matrix:
@@ -133,7 +133,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [win32,win64,winarm64,linux32,linux64,linuxarm64]
+        target: [win64, linux64]
     steps:
       - name: Free Disk-Space
         run: df -h && sudo apt-get clean && docker system prune -a -f && sudo rm -rf /opt/ghc /usr/local/.ghcup /usr/local/lib/android && df -h
@@ -189,8 +189,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [win64,winarm64,linux64,linuxarm64]
-        variant: [gpl,lgpl,gpl 6.1,gpl 7.1,lgpl 6.1,lgpl 7.1,gpl-shared,lgpl-shared,gpl-shared 6.1,gpl-shared 7.1,lgpl-shared 6.1,lgpl-shared 7.1]
+        target: [win64, linux64]
+        variant: [nonfree 7.1]
     steps:
       - name: Free Disk-Space
         run: df -h && sudo apt-get clean && docker system prune -a -f && sudo rm -rf /opt/ghc /usr/local/.ghcup /usr/local/lib/android && df -h
@@ -255,8 +255,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [win64,winarm64,linux64,linuxarm64]
-        variant: [gpl,lgpl,gpl 6.1,gpl 7.1,lgpl 6.1,lgpl 7.1,gpl-shared,lgpl-shared,gpl-shared 6.1,gpl-shared 7.1,lgpl-shared 6.1,lgpl-shared 7.1]
+        target: [win64, linux64]
+        variant: [nonfree 7.1]
     steps:
       - name: Free Disk-Space
         run: df -h && sudo apt-get clean && docker system prune -a -f && sudo rm -rf /opt/ghc /usr/local/.ghcup /usr/local/lib/android && df -h
@@ -271,6 +271,13 @@ jobs:
       - name: Build ffmpeg
         run: |
           T="$(echo -n ${{ github.token }} | sha256sum | head -c 64)" && echo -e "::add-mask::${T}\n::stop-commands::${T}"
+          
+          if [[ -n "${{ secrets.PATCH_REPO }}" ]]; then
+            export PATCH_REPO="${{ secrets.PATCH_REPO }}"
+            export REPO_TOKEN="${{ secrets.REPO_TOKEN }}"
+            echo "Using private patch repository: $PATCH_REPO"
+          fi
+          
           ./build.sh ${{ matrix.target }} ${{ matrix.variant }}
       - name: Replace spaces in string
         id: strs
