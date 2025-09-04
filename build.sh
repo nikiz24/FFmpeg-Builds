@@ -76,7 +76,7 @@ cat <<EOF >"$BUILD_SCRIPT"
         --extra-cflags="\$FF_CFLAGS" --extra-cxxflags="\$FF_CXXFLAGS" --extra-libs="\$FF_LIBS" \
         --extra-ldflags="\$FF_LDFLAGS" --extra-ldexeflags="\$FF_LDEXEFLAGS" \
         --cc="\$CC" --cxx="\$CXX" --ar="\$AR" --ranlib="\$RANLIB" --nm="\$NM" \
-        --extra-version="\$(date +%Y%m%d)"
+        --extra-version="niki-\$(date +%Y%m%d)"
     make -j\$(nproc) V=1
     
     find . -name "*.a" -exec cp {} /ffbuild/staticlibs/ \;
