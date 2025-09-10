@@ -82,15 +82,51 @@ cat <<EOF >"$BUILD_SCRIPT"
     find . -name "*.a" -exec cp {} /ffbuild/staticlibs/ \;
     
     echo "Copying dependency static libraries..."
-    for flag in \$FF_LDFLAGS; do
-        if [[ \$flag == -L* ]]; then
-            libdir="\${flag:2}"
-            if [[ -d "\$libdir" ]]; then
-                echo "Searching for .a files in \$libdir"
-                find "\$libdir" -name "*.a" -exec cp -t /ffbuild/staticlibs/ {} +
+    
+    # List of pkg-config packages derived from the user's configure command
+    PKG_CONFIG_PACKAGES=(
+        iconv zlib libxml-2.0 soxr openssl libvmaf fontconfig harfbuzz freetype2 fribidi
+        vulkan shaderc vorbis xcb x11 libpulse opencl gmp liblzma
+        aom aribb24 avisynth chromaprint dav1d davs2 libdvdread libdvdnav fdk-aac
+        frei0r-plugins gme kvazaar libaribcaption libass libbluray libjxl libmp3lame opus
+        libplacebo librist libssh theora libvpx libwebp libzmq lv2 vpl openal
+        oapv libopencore-amrnb libopencore-amrwb openh264 libopenjp2 libopenmpt rav1e
+        rubberband sdl2 snappy srt svt-av1 twolame uavs3d libdrm
+        libva vidstab vvenc whisper x264 x265 xavs2 xvidcore zimg zvbi
+    )
+
+    for pkg in "\${PKG_CONFIG_PACKAGES[@]}"; do
+        echo "--- Processing \$pkg ---"
+        if pkg-config --exists "\$pkg"; then
+            # Get the library directory. Try --variable=libdir first, fallback to --libs-only-L.
+            libdir=\$(pkg-config --variable=libdir "\$pkg" | xargs)
+            if [[ -z "\$libdir" ]]; then
+                libdir=\$(pkg-config --libs-only-L "\$pkg" | sed 's/^-L//' | awk '{print \$1}' | xargs)
             fi
+
+            # Get the main library name. A package can link to multiple libs, we only want the first one.
+            libname=\$(pkg-config --libs-only-l "\$pkg" | sed 's/^-l//' | awk '{print \$1}' | xargs)
+
+            if [[ -d "\$libdir" && -n "\$libname" ]]; then
+                echo "Searching for lib\${libname}.a in \$libdir"
+                # Use find to locate and copy the library file. -maxdepth 2 just in case.
+                find "\$libdir" -maxdepth 2 -name "lib\${libname}.a" -exec cp -f -t /ffbuild/staticlibs/ {} +
+            else
+                echo "Warning: Could not resolve library path or name for \$pkg (libdir='\$libdir', libname='\$libname')"
+            fi
+        else
+            echo "Warning: pkg-config package \$pkg not found"
         fi
     done
+
+    # Special handling for ffnvcodec and cuda-llvm as they don't use pkg-config
+    if [[ -d /usr/local/cuda/lib64 ]]; then
+        find /usr/local/cuda/lib64 -name "*.a" -exec cp -f -t /ffbuild/staticlibs/ {} +
+    fi
+    # amf
+    if [[ -d /opt/amf/lib ]]; then
+        find /opt/amf/lib -name "*.a" -exec cp -f -t /ffbuild/staticlibs/ {} +
+    fi
     
     make install install-doc
 EOF
