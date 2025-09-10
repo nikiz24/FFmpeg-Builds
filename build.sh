@@ -81,6 +81,17 @@ cat <<EOF >"$BUILD_SCRIPT"
     
     find . -name "*.a" -exec cp {} /ffbuild/staticlibs/ \;
     
+    echo "Copying dependency static libraries..."
+    for flag in \$FF_LDFLAGS; do
+        if [[ \$flag == -L* ]]; then
+            libdir="\${flag:2}"
+            if [[ -d "\$libdir" ]]; then
+                echo "Searching for .a files in \$libdir"
+                find "\$libdir" -name "*.a" -exec cp -t /ffbuild/staticlibs/ {} +
+            fi
+        fi
+    done
+    
     make install install-doc
 EOF
 
